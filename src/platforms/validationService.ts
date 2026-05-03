@@ -77,7 +77,17 @@ export async function validateCertificate(
     return result;
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
-    logger.error(`[${requestId}] Scrape failed: ${message}`);
+    const isNetworkError = message.includes('timeout') || message.includes('ECONNREFUSED') || message.includes('ENOTFOUND');
+    const isAPIError = message.includes('400') || message.includes('401') || message.includes('403');
+    
+    let errorDetails = message;
+    if (isNetworkError) {
+      errorDetails = `Network error (connection/timeout) - ${message}`;
+    } else if (isAPIError) {
+      errorDetails = `API error - ${message}`;
+    }
+    
+    logger.error(`[${requestId}] Validation failed: ${errorDetails}`);
 
     return {
       ...base,
@@ -101,7 +111,7 @@ export async function validateCertificate(
         rawText: "",
       },
       processingTimeMs: Date.now() - startTime,
-      errorMessage: `Scraping failed: ${message}`,
+      errorMessage: `Validation failed: ${errorDetails}`,
     };
   }
 }
