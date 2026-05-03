@@ -23,10 +23,6 @@ export function buildCacheKey(url: string, claimedName: string): string {
 export function getCached(key: string): ValidationResult | null {
   const entry = cache.get<CacheEntry>(key);
   if (!entry) return null;
-  if (Date.now() > entry.expiresAt) {
-    cache.del(key);
-    return null;
-  }
   return entry.result;
 }
 
@@ -37,7 +33,6 @@ export function setCache(
 ): void {
   const entry: CacheEntry = {
     result,
-    expiresAt: Date.now() + ttlSeconds * 1000,
   };
   cache.set(key, entry, ttlSeconds);
 }

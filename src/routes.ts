@@ -7,7 +7,7 @@ import { validateCertificate } from "./platforms/validationService";
 import { getCacheStats } from "./utils/cache";
 import { ValidationRequest } from "./types";
 import { logger } from "./utils/logger";
-import { v4 as uuidv4 } from "uuid";
+import crypto from "crypto";
 
 const router = Router();
 
@@ -29,7 +29,7 @@ router.post(
       res.status(500).json({
         error: "INTERNAL_ERROR",
         message,
-        requestId: uuidv4(),
+        requestId: crypto.randomUUID(),
         timestamp: new Date().toISOString(),
       });
     }
@@ -47,7 +47,7 @@ router.post(
       res.status(400).json({
         error: "VALIDATION_ERROR",
         message: "requests must be a non-empty array",
-        requestId: uuidv4(),
+        requestId: crypto.randomUUID(),
         timestamp: new Date().toISOString(),
       });
       return;
@@ -57,7 +57,7 @@ router.post(
       res.status(400).json({
         error: "VALIDATION_ERROR",
         message: "Batch size limit is 10 requests",
-        requestId: uuidv4(),
+        requestId: crypto.randomUUID(),
         timestamp: new Date().toISOString(),
       });
       return;
@@ -76,7 +76,7 @@ router.post(
       }));
 
       res.json({
-        batchId: uuidv4(),
+        batchId: crypto.randomUUID(),
         timestamp: new Date().toISOString(),
         total: requests.length,
         results: response,
@@ -86,7 +86,7 @@ router.post(
       res.status(500).json({
         error: "INTERNAL_ERROR",
         message,
-        requestId: uuidv4(),
+        requestId: crypto.randomUUID(),
         timestamp: new Date().toISOString(),
       });
     }

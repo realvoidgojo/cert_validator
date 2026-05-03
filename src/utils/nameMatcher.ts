@@ -1,9 +1,8 @@
 // src/utils/nameMatcher.ts
 
-import Fuse from "fuse.js";
-import axios from "axios";
 import { MatchResult } from "../types";
 import { logger } from "./logger";
+import { groq } from "./groqClient";
 
 /**
  * Normalize a name string:
@@ -63,21 +62,7 @@ function levenshteinSimilarity(a: string, b: string): number {
   return 1 - levenshtein(a, b) / maxLen;
 }
 
-/**
- * Fuse.js fuzzy match score (0–1)
- */
-function fuseScore(target: string, query: string): number {
-  if (!target || !query) return 0;
-  const fuse = new Fuse([target], {
-    includeScore: true,
-    threshold: 1.0,  // include all results
-    ignoreLocation: true,
-  });
-  const results = fuse.search(query);
-  if (!results.length) return 0;
-  // Fuse score 0 = perfect, 1 = no match → invert
-  return 1 - (results[0].score ?? 1);
-}
+
 
 /**
  * Main entry point: compare extracted name vs claimed name
@@ -125,17 +110,12 @@ export function matchNames(
     };
   }
 
-  // 3. Fuzzy match — combine Levenshtein + Fuse.js
+  // 3. Fuzzy match — combine Levenshtein
   const levScore = levenshteinSimilarity(normalizedExtracted, normalizedClaimed);
   const levSortedScore = levenshteinSimilarity(sortedExtracted, sortedClaimed);
-  const fuseDirectScore = fuseScore(normalizedExtracted, normalizedClaimed);
-  const fuseSortedScore = fuseScore(sortedExtracted, sortedClaimed);
 
   // Weighted composite: sorted variants get more weight
-  const confidence = Math.max(
-    levScore * 0.4 + fuseDirectScore * 0.6,
-    levSortedScore * 0.4 + fuseSortedScore * 0.6
-  );
+  const confidence = Math.max(levScore, levSortedScore);
 
   const MATCH_THRESHOLD = 0.75;
   return {
@@ -158,52 +138,22 @@ export async function matchNamesLLM(
   const baseMatch = matchNames(extracted, claimed);
   if (baseMatch.isMatch && baseMatch.confidence > 0.9) return baseMatch;
 
-  const apiKey = process.env.GROQ_API_KEY;
-  if (!apiKey || !extracted) return baseMatch;
+  if (!extracted) return baseMatch;
 
   logger.info(`Performing LLM name match: "${extracted}" vs "${claimed}"`);
 
   try {
-    const prompt = `
-    You are a name matching expert. Compare the following two names and decide if they refer to the same person.
-    Extracted Name from Certificate: "${extracted}"
-    Claimed Name by User: "${claimed}"
+    const prompt = `Compare extracted "${extracted}" and claimed "${claimed}". Are they the same person? Handle initials, reordering, phonetic shifts, and middle names. Reject course titles immediately. Return ONLY JSON: {"isMatch": boolean, "confidence": number, "reason": "short explanation"}`;
 
-    Rules:
-    - Handle initials (e.g., "Tarun S S" vs "Tarun Senthil").
-    - Handle reordering (e.g., "S. S. Tarun" vs "Tarun S S" or "Senthil Tarun" vs "Tarun Senthil").
-    - Handle middle name expansion and contractions.
-    - Handle cultural naming conventions (e.g., surname first, family name initials).
-    - Allow for minor spelling variations or phonetic similarities (e.g., "Vikas" vs "Vikaas").
-    - IMPORTANT: If one of the strings is clearly a course title or certificate type (e.g. "Problem Solving Certificate") and NOT a person's name, return "isMatch": false.
-    - Be robust but strict about major differences (e.g., "Rahul Kumar" vs "Rohan Kumar" should be false).
+    const response = await groq.chat.completions.create({
+      model: "llama-3.1-8b-instant",
+      messages: [{ role: "user", content: prompt }],
+      temperature: 0,
+    });
 
-    Respond ONLY with a JSON object:
-    {
-      "isMatch": boolean,
-      "confidence": number (0.0 to 1.0),
-      "reason": "short explanation"
-    }
-    `;
-
-    const response = await axios.post(
-      "https://api.groq.com/openai/v1/chat/completions",
-      {
-        model: "llama-3.3-70b-versatile",
-        messages: [{ role: "user", content: prompt }],
-        response_format: { type: "json_object" },
-        temperature: 0,
-      },
-      {
-        headers: {
-          Authorization: `Bearer ${apiKey}`,
-          "Content-Type": "application/json",
-        },
-        timeout: 5000,
-      }
-    );
-
-    const result = JSON.parse(response.data.choices[0].message.content);
+    const content = response.choices[0].message?.content || "{}";
+    const cleanJson = content.replace(/```json|```/g, "").trim();
+    const result = JSON.parse(cleanJson);
     logger.info(`LLM Decision: ${result.isMatch} (Conf: ${result.confidence}) - ${result.reason}`);
 
     return {

@@ -119,14 +119,13 @@ export class CertValidatorClient {
   }
 
   /**
-   * Get supported platforms
+   * Get supported capabilities
    */
-  async getPlatforms(): Promise<string[]> {
-    const res = await fetch(`${this.baseUrl}/api/v1/platforms`, {
+  async getCapabilities(): Promise<{ engine: string; supports: string[]; universal: boolean; timestamp: string }> {
+    const res = await fetch(`${this.baseUrl}/api/v1/capabilities`, {
       headers: this.headers(),
     });
-    const data = (await res.json()) as { supported: string[] };
-    return data.supported;
+    return (await res.json()) as { engine: string; supports: string[]; universal: boolean; timestamp: string };
   }
 
   /**

@@ -49,7 +49,6 @@ export interface ValidationResult {
 
 export interface CacheEntry {
   result: ValidationResult;
-  expiresAt: number;
 }
 
 export interface ApiErrorResponse {

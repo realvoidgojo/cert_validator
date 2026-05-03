@@ -1,4 +1,4 @@
-import { v4 as uuidv4 } from "uuid";
+import crypto from "crypto";
 import {
   ValidationRequest,
   ValidationResult,
@@ -11,7 +11,7 @@ import { logger } from "../utils/logger";
 export async function validateCertificate(
   req: ValidationRequest
 ): Promise<ValidationResult> {
-  const requestId = uuidv4();
+  const requestId = crypto.randomUUID();
   const startTime = Date.now();
   const timestamp = new Date().toISOString();
 
@@ -70,7 +70,7 @@ export async function validateCertificate(
       setCache(cacheKey, result);
     }
 
-    console.log(
+    logger.info(
       `[${requestId}] Done — valid: ${isValid}, confidence: ${match.confidence}, time: ${result.processingTimeMs}ms`
     );
 

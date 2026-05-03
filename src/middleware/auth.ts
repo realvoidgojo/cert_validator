@@ -1,7 +1,7 @@
 // src/middleware/auth.ts
 
 import { Request, Response, NextFunction } from "express";
-import { v4 as uuidv4 } from "uuid";
+import crypto from "crypto";
 
 export function apiKeyAuth(
   req: Request,
@@ -21,7 +21,7 @@ export function apiKeyAuth(
     res.status(401).json({
       error: "UNAUTHORIZED",
       message: "Valid API key required. Pass via x-api-key header.",
-      requestId: uuidv4(),
+      requestId: crypto.randomUUID(),
       timestamp: new Date().toISOString(),
     });
     return;

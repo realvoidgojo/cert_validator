@@ -1,10 +1,7 @@
-import 'dotenv/config';
 import axios from 'axios';
-import Groq from 'groq-sdk';
 import { ExtractedCertificateData } from '../types';
 import { logger } from '../utils/logger';
-
-const groq = new Groq({ apiKey: process.env.GROQ_API_KEY });
+import { groq } from '../utils/groqClient';
 
 /**
  * Tier 2: Check if the URL itself is an image
@@ -77,30 +74,14 @@ export async function extractFromImageWithGroq(
   imageBase64: string,
   claimedName: string
 ): Promise<ExtractedCertificateData> {
-  logger.info(`Sending image to Groq Vision for extraction (Claimed Name: ${claimedName})`);
+  logger.info(`Sending image to Groq Vision for extraction`);
 
-  const prompt = `
-You are analyzing a digital certificate image.
-Extract ONLY the following fields and return strict JSON — no markdown, no explanation:
-{
-  "recipientName": "full name on certificate or null",
-  "courseTitle": "course/certification name or null",
-  "issueDate": "date issued or null",
-  "issuingOrganization": "issuing body or null",
-  "credentialId": "certificate ID/number or null",
-  "expiryDate": "expiry date or null",
-  "skills": ["skill1", "skill2"]
-}
-
-The claimed owner is "${claimedName}". 
-If you cannot find a field, set it to null.
-Return ONLY the JSON object.
-  `.trim();
+  const prompt = `Extract certificate details into strict JSON: {"recipientName": string|null, "courseTitle": string|null, "issueDate": string|null, "issuingOrganization": string|null, "credentialId": string|null, "expiryDate": string|null, "skills": string[]}. Return ONLY JSON.`.trim();
 
   try {
     const response = await groq.chat.completions.create({
       model: 'meta-llama/llama-4-scout-17b-16e-instruct',
-      max_tokens: 512,
+      max_tokens: 256,
       temperature: 0,
       messages: [
         {

@@ -2,7 +2,7 @@
 
 import { Request, Response, NextFunction } from "express";
 import Joi from "joi";
-import { v4 as uuidv4 } from "uuid";
+import crypto from "crypto";
 
 const validationSchema = Joi.object({
   certificateUrl: Joi.string()
@@ -43,7 +43,7 @@ export function validateRequest(
     res.status(400).json({
       error: "VALIDATION_ERROR",
       message: error.details.map((d) => d.message).join("; "),
-      requestId: uuidv4(),
+      requestId: crypto.randomUUID(),
       timestamp: new Date().toISOString(),
     });
     return;
