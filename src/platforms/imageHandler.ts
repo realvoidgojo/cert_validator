@@ -54,15 +54,15 @@ export async function screenshotViaBrowserless(url: string): Promise<string | nu
           width: 1920,
           height: 1080,
           deviceScaleFactor: 2 // High resolution for better OCR
-        },
-        waitFor: 500 // Short delay for animations to settle
+        }
       },
       { responseType: 'arraybuffer', timeout: 30000 }
     );
 
     return Buffer.from(response.data).toString('base64');
-  } catch (err) {
-    logger.error(`Tier 3 screenshot failed for ${url}: ${err instanceof Error ? err.message : String(err)}`);
+  } catch (err: any) {
+    const details = err.response?.data ? err.response.data.toString() : "";
+    logger.error(`Tier 3 screenshot failed for ${url}: ${err.message} ${details}`);
     return null;
   }
 }
