@@ -146,7 +146,7 @@ export async function matchNamesLLM(
     const prompt = `Compare extracted "${extracted}" and claimed "${claimed}". Are they the same person? Handle initials, reordering, phonetic shifts, and middle names. Reject course titles immediately. Return ONLY JSON: {"isMatch": boolean, "confidence": number, "reason": "short explanation"}`;
 
     const response = await groq.chat.completions.create({
-      model: "llama-3.3-70b-versatile",
+      model: "llama-3.3-70b-instant",
       messages: [{ role: "user", content: prompt }],
       temperature: 0,
       response_format: { type: "json_object" },
